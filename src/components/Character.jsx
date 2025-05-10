@@ -21,9 +21,26 @@ export function Character({
   const { nodes, materials } = useGraph(clone);
   const { actions } = useAnimations(animations, group);
   useEffect(() => {
-    actions[animation]?.reset().fadeIn(0.1).play();
-    return () => actions[animation]?.fadeOut(0.1);
-  }, [animation]);
+    if (!actions || !animation) return;
+    let prevAction = null;
+    for (const name in actions) {
+      if (actions[name].isRunning()) {
+        prevAction = actions[name];
+        break;
+      }
+    }
+    const newAction = actions[animation];
+    if (newAction) {
+      newAction.reset().fadeIn(0.1).play(); 
+    }
+
+    if (prevAction && prevAction !== newAction) {
+      prevAction.fadeOut(0.1); 
+    }
+    return () => {
+      newAction?.fadeOut(0.1); 
+    };
+  }, [animation, actions]);
 
   const textRef = useRef();
 
@@ -37,7 +54,7 @@ export function Character({
     <group ref={group} {...props} dispose={null}>
       <group ref={textRef}>
         <Text
-          position-y={2.8}
+          position-y={2.215}
           fontSize={0.5}
           anchorX="center"
           anchorY="middle"
@@ -47,7 +64,7 @@ export function Character({
           <meshBasicMaterial color="white" />
         </Text>
         <Text
-          position-y={2.78}
+          position-y={2.2}
           position-x={0.02}
           position-z={-0.02}
           fontSize={0.5}
@@ -60,37 +77,27 @@ export function Character({
         </Text>
       </group>
       <group name="Scene">
-        <group name="fall_guys">
-          <primitive object={nodes._rootJoint} />
+        <group
+          name="FallGuys"
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={0.02}
+          userData={{ name: "FallGuys" }}
+        >
           <skinnedMesh
-            name="body"
-            geometry={nodes.body.geometry}
-            skeleton={nodes.body.skeleton}
-          >
-            <meshStandardMaterial {...materials.Material_0} color={color} />
-          </skinnedMesh>
+            name="Body"
+            geometry={nodes.Body.geometry}
+            material={materials["FallGuy_Only.011"]}
+            skeleton={nodes.Body.skeleton}
+            userData={{ name: "Body" }}
+          />
           <skinnedMesh
-            name="eye"
-            geometry={nodes.eye.geometry}
-            material={materials.Material_2}
-            skeleton={nodes.eye.skeleton}
-          >
-            <meshStandardMaterial {...materials.Material_2} color={"white"} />
-          </skinnedMesh>
-          <skinnedMesh
-            name="hand-"
-            geometry={nodes["hand-"].geometry}
-            skeleton={nodes["hand-"].skeleton}
-          >
-            <meshStandardMaterial {...materials.Material_0} color={color} />
-          </skinnedMesh>
-          <skinnedMesh
-            name="leg"
-            geometry={nodes.leg.geometry}
-            skeleton={nodes.leg.skeleton}
-          >
-            <meshStandardMaterial {...materials.Material_0} color={color} />
-          </skinnedMesh>
+            name="Eyes"
+            geometry={nodes.Eyes.geometry}
+            material={materials["phong2.011"]}
+            skeleton={nodes.Eyes.skeleton}
+            userData={{ name: "Eyes" }}
+          />
+          <primitive object={nodes.Root} />
         </group>
       </group>
     </group>
