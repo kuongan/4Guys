@@ -43,12 +43,22 @@ export const GameStateProvider = ({ children }) => {
       return;
     }
     isInit.current = true;
+    // Trong useGameState.jsx, cập nhật onPlayerJoin
     onPlayerJoin((state) => {
       const controls = new Joystick(state, {
         type: "angular",
         buttons: [{ id: "Jump", label: "Jump" }],
       });
       const newPlayer = { state, controls };
+
+      // Set default profile if not exists
+      if (!state.state.profile) {
+        state.setState("profile", {
+          name: `Player ${players.length + 1}`,
+          color: "#ffff00", // Default yellow
+          photo: "/api/placeholder/50/50", // Placeholder avatar
+        });
+      }
 
       if (host) {
         state.setState("dead", stage === "game");

@@ -40,13 +40,29 @@ export const CharacterController = ({
   const cameraLookAt = useRef();
   const isRunning = get()[Controls.run];
   const movementSpeed = isRunning ? MOVEMENT_SPEED * 1.4 : MOVEMENT_SPEED;
+  const [playerProfile, setPlayerProfile] = useState(state.state.profile);
 
   // Add refs for managing landing animation state
   const isLanding = useRef(false);
   const landingTimer = useRef(null);
   const previousYVelocity = useRef(0);
   const prevStage = useRef(stage);
+  useEffect(() => {
+    const checkProfileChanges = () => {
+      const currentProfile = state.getState("profile");
+      if (JSON.stringify(currentProfile) !== JSON.stringify(playerProfile)) {
+        setPlayerProfile(currentProfile);
+      }
+    };
 
+    // Check immediately
+    checkProfileChanges();
+
+    // Set up interval to check for changes
+    const interval = setInterval(checkProfileChanges, 100); // Check every 100ms
+
+    return () => clearInterval(interval);
+  }, [state, playerProfile]);
   // Reset position when stage changes
   useEffect(() => {
     if (rb.current && stage !== prevStage.current) {
@@ -268,8 +284,8 @@ export const CharacterController = ({
       <group ref={cameraPosition} position={[0, 8, -16]}></group>
       <Character
         scale={0.42}
-        color={state.state.profile.color}
-        name={state.state.profile.name}
+        color={playerProfile.color} 
+        name={playerProfile.name}
         position-y={0.2}
         animation={animation}
       />

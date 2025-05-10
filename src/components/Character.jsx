@@ -7,21 +7,51 @@ import { Text, useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame, useGraph } from "@react-three/fiber";
 import React, { useEffect, useMemo, useRef } from "react";
 import { SkeletonUtils } from "three-stdlib";
+import * as THREE from "three";
 
 export function Character({
-  animation = "wave", // FG_Run_A, FG_Walk_A, FG_Idle_A
+  animation = "wave",
   color = "yellow",
   name = "Player",
   ...props
 }) {
   const group = useRef();
   const { scene, animations } = useGLTF("/models/character.glb", "draco/gltf/");
-  // Skinned meshes cannot be re-used in threejs without cloning them
-  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+
+  const clone = useMemo(() => {
+    const clonedScene = SkeletonUtils.clone(scene);
+    return clonedScene;
+  }, [scene]);
+
   const { nodes, materials } = useGraph(clone);
   const { actions } = useAnimations(animations, group);
+
+  // Update màu khi color prop thay đổi
+  useEffect(() => {
+    console.log(`\n=== CHANGING COLOR TO: ${color} ===`);
+
+    if (group.current) {
+      group.current.traverse((child) => {
+        if (child.isMesh && child.name === "Body") {
+          // Method 3: Modify existing material
+          child.material.color.set(color);
+          child.material.map = null; 
+          child.material.vertexColors = false; // Disable vertex colors
+          child.material.emissive.setHex(0x000000);
+          child.material.needsUpdate = true;
+
+          console.log("After color change:");
+          console.log("- new color:", child.material.color.getHexString());
+          console.log("- material updated");
+        }
+      });
+    }
+  }, [color]);
+
+  // Animation handling
   useEffect(() => {
     if (!actions || !animation) return;
+
     let prevAction = null;
     for (const name in actions) {
       if (actions[name].isRunning()) {
@@ -29,21 +59,24 @@ export function Character({
         break;
       }
     }
+
     const newAction = actions[animation];
     if (newAction) {
-      newAction.reset().fadeIn(0.1).play(); 
+      newAction.reset().fadeIn(0.1).play();
     }
 
     if (prevAction && prevAction !== newAction) {
-      prevAction.fadeOut(0.1); 
+      prevAction.fadeOut(0.1);
     }
+
     return () => {
-      newAction?.fadeOut(0.1); 
+      newAction?.fadeOut(0.1);
     };
   }, [animation, actions]);
 
   const textRef = useRef();
 
+  // Make text always face camera
   useFrame(({ camera }) => {
     if (textRef.current) {
       textRef.current.lookAt(camera.position);
@@ -52,6 +85,7 @@ export function Character({
 
   return (
     <group ref={group} {...props} dispose={null}>
+      {/* Player name text */}
       <group ref={textRef}>
         <Text
           position-y={2.215}
@@ -76,6 +110,8 @@ export function Character({
           <meshBasicMaterial color="black" />
         </Text>
       </group>
+
+      {/* Character model */}
       <group name="Scene">
         <group
           name="FallGuys"
