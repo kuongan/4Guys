@@ -8,7 +8,7 @@ import {
   vec3,
 } from "@react-three/rapier";
 import { setState } from "playroomkit";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Vector3 } from "three";
 import { Controls } from "../App";
 import { useAudioManager } from "../hooks/useAudioManager";
@@ -18,7 +18,7 @@ import { FLOORS, FLOOR_HEIGHT } from "./GameArena";
 
 const MOVEMENT_SPEED = 4.2;
 const JUMP_FORCE = 8;
-const ROTATION_SPEED = 2.5;
+const ROTATION_SPEED = 2.7;
 const vel = new Vector3();
 
 export const CharacterController = ({
@@ -38,6 +38,40 @@ export const CharacterController = ({
   const landed = useRef(false);
   const cameraPosition = useRef();
   const cameraLookAt = useRef();
+  const isRunning = get()[Controls.run];
+  const movementSpeed = isRunning ? MOVEMENT_SPEED * 1.4 : MOVEMENT_SPEED;
+
+  // Add refs for managing landing animation state
+  const isLanding = useRef(false);
+  const landingTimer = useRef(null);
+  const previousYVelocity = useRef(0);
+  const prevStage = useRef(stage);
+
+  // Reset position when stage changes
+  useEffect(() => {
+    if (rb.current && stage !== prevStage.current) {
+      const startingPos = state.getState("startingPos");
+
+      if (stage === "countdown" && startingPos) {
+        // Reset position for countdown
+        rb.current.setTranslation({
+          x: startingPos.x,
+          y: 5, // Start higher to avoid clipping
+          z: startingPos.z,
+        });
+
+        // Reset velocities
+        rb.current.setLinvel({ x: 0, y: 0, z: 0 });
+        rb.current.setAngvel({ x: 0, y: 0, z: 0 });
+
+        // Reset states
+        inTheAir.current = true;
+        landed.current = false;
+      }
+
+      prevStage.current = stage;
+    }
+  }, [stage, state]);
 
   useFrame(({ camera }) => {
     if (stage === "lobby") {
@@ -55,112 +89,149 @@ export const CharacterController = ({
       camera.position.lerp(worldPos, 0.05);
     }
 
-    if (stage !== "game") {
-      return;
-    }
+    // Movement logic for lobby and game
+    if ( stage === "game") {
+      if (!player) {
+        const pos = state.getState("pos");
+        if (pos) {
+          rb.current.setTranslation(pos);
+        }
+        const rot = state.getState("rot");
+        if (rot) {
+          rb.current.setRotation(rot);
+        }
+        const anim = state.getState("animation");
+        setAnimation(anim);
 
-    if (!player) {
-      const pos = state.getState("pos");
-      if (pos) {
-        rb.current.setTranslation(pos);
+        return;
       }
-      const rot = state.getState("rot");
-      if (rot) {
-        rb.current.setRotation(rot);
+
+      const rotVel = {
+        x: 0,
+        y: 0,
+        z: 0,
+      };
+
+      const curVel = rb.current.linvel();
+      vel.x = 0;
+      vel.y = 0;
+      vel.z = 0;
+
+      const angle = controls.angle();
+      const joystickX = Math.sin(angle);
+      const joystickY = Math.cos(angle);
+
+      if (
+        get()[Controls.forward] ||
+        (controls.isJoystickPressed() && joystickY < -0.1)
+      ) {
+        vel.z += movementSpeed;
       }
-      const anim = state.getState("animation");
-      setAnimation(anim);
-      return;
-    }
+      if (
+        get()[Controls.back] ||
+        (controls.isJoystickPressed() && joystickY > 0.1)
+      ) {
+        vel.z -= movementSpeed;
+      }
+      if (
+        get()[Controls.left] ||
+        (controls.isJoystickPressed() && joystickX < -0.1)
+      ) {
+        rotVel.y += ROTATION_SPEED;
+      }
+      if (
+        get()[Controls.right] ||
+        (controls.isJoystickPressed() && joystickX > 0.1)
+      ) {
+        rotVel.y -= ROTATION_SPEED;
+      }
 
-    const rotVel = {
-      x: 0,
-      y: 0,
-      z: 0,
-    };
+      rb.current.setAngvel(rotVel);
+      const eulerRot = euler().setFromQuaternion(quat(rb.current.rotation()));
+      vel.applyEuler(eulerRot);
 
-    const curVel = rb.current.linvel();
-    vel.x = 0;
-    vel.y = 0;
-    vel.z = 0;
+      if (
+        (get()[Controls.jump] || controls.isPressed("Jump")) &&
+        !inTheAir.current &&
+        landed.current
+      ) {
+        vel.y += JUMP_FORCE;
+        inTheAir.current = true;
+        landed.current = false;
+      } else {
+        vel.y = curVel.y;
+      }
 
-    const angle = controls.angle();
-    const joystickX = Math.sin(angle);
-    const joystickY = Math.cos(angle);
+      if (Math.abs(vel.y) > 1) {
+        inTheAir.current = true;
+        landed.current = false;
+      } else {
+        inTheAir.current = false;
+      }
 
-    if (
-      get()[Controls.forward] ||
-      (controls.isJoystickPressed() && joystickY < -0.1)
-    ) {
-      vel.z += MOVEMENT_SPEED;
-    }
-    if (
-      get()[Controls.back] ||
-      (controls.isJoystickPressed() && joystickY > 0.1)
-    ) {
-      vel.z -= MOVEMENT_SPEED;
-    }
-    if (
-      get()[Controls.left] ||
-      (controls.isJoystickPressed() && joystickX < -0.1)
-    ) {
-      rotVel.y += ROTATION_SPEED;
-    }
-    if (
-      get()[Controls.right] ||
-      (controls.isJoystickPressed() && joystickX > 0.1)
-    ) {
-      rotVel.y -= ROTATION_SPEED;
-    }
+      rb.current.setLinvel(vel);
+      state.setState("pos", rb.current.translation());
+      state.setState("rot", rb.current.rotation());
 
-    rb.current.setAngvel(rotVel);
-    // apply rotation to x and z to go in the right direction
-    const eulerRot = euler().setFromQuaternion(quat(rb.current.rotation()));
-    vel.applyEuler(eulerRot);
-    if (
-      (get()[Controls.jump] || controls.isPressed("Jump")) &&
-      !inTheAir.current &&
-      landed.current
-    ) {
-      vel.y += JUMP_FORCE;
-      inTheAir.current = true;
-      landed.current = false;
-    } else {
-      vel.y = curVel.y;
-    }
-    if (Math.abs(vel.y) > 1) {
-      inTheAir.current = true;
-      landed.current = false;
-    } else {
-      inTheAir.current = false;
-    }
-    rb.current.setLinvel(vel);
-    state.setState("pos", rb.current.translation());
-    state.setState("rot", rb.current.rotation());
+      // ANIMATION
+      const movement = Math.abs(vel.x) + Math.abs(vel.z);
 
-    // ANIMATION
-    const movement = Math.abs(vel.x) + Math.abs(vel.z);
-    if (inTheAir.current && vel.y > 2) {
-      setAnimation("jump_up");
-      state.setState("animation", "jump_up");
-    } else if (inTheAir.current && vel.y < -5) {
-      setAnimation("fall");
-      state.setState("animation", "fall");
-    } else if (movement > 1 || inTheAir.current) {
-      setAnimation("run");
-      state.setState("animation", "run");
-    } else {
-      setAnimation("idle");
-      state.setState("animation", "idle");
-    }
+      // Check for landing condition
+      if (
+        inTheAir.current &&
+        previousYVelocity.current < -3 &&
+        Math.abs(vel.y) < 0.5 &&
+        !isLanding.current
+      ) {
+        isLanding.current = true;
+        setAnimation("land");
+        state.setState("animation", "land");
 
-    if (
-      rb.current.translation().y < -FLOOR_HEIGHT * FLOORS.length &&
-      !state.getState("dead")
-    ) {
-      state.setState("dead", true);
-      setState("lastDead", state.state.profile, true);
-      playAudio("Dead", true);
+        if (landingTimer.current) {
+          clearTimeout(landingTimer.current);
+        }
+
+        landingTimer.current = setTimeout(() => {
+          isLanding.current = false;
+          landingTimer.current = null;
+        }, 300);
+      }
+      
+
+      previousYVelocity.current = vel.y;
+
+      // Only update animation if not in landing state
+      if (!isLanding.current) {
+        if (inTheAir.current && vel.y > 2) {
+          setAnimation("jump up");
+          state.setState("animation", "jump up");
+        } else if (inTheAir.current && vel.y < -5) {
+          setAnimation("fall");
+          state.setState("animation", "fall");
+        } else if (movement > 1 || inTheAir.current) {
+          const anim = isRunning ? "run" : "walk";
+          setAnimation(anim);
+          state.setState("animation", anim);
+        } else if (stage === "lobby") {
+          setAnimation("wave");
+          state.setState("animation", "wave");
+        }
+        else {
+          setAnimation("idle");
+          state.setState("animation", "idle");
+        }
+      }
+
+      // Death check only in game stage
+      if (
+        stage === "game" &&
+        rb.current.translation().y < -FLOOR_HEIGHT * FLOORS.length &&
+        !state.getState("dead")
+      ) {
+        state.setState("dead", true);
+        setState("lastDead", state.state.profile, true);
+        playAudio("Dead", true);
+      }
     }
   });
 
@@ -174,12 +245,16 @@ export const CharacterController = ({
       {...props}
       position-x={startingPos.x}
       position-z={startingPos.z}
+      position-y={stage === "countdown" ? 5 : 2}
       colliders={false}
       canSleep={false}
       enabledRotations={[false, true, false]}
       ref={rb}
       onCollisionEnter={(e) => {
-        if (e.other.rigidBodyObject.name === "hexagon") {
+        if (
+          e.other.rigidBodyObject.name === "hexagon" ||
+          e.other.rigidBodyObject.name === "lobbyFloor"
+        ) {
           inTheAir.current = false;
           landed.current = true;
           const curVel = rb.current.linvel();
@@ -187,7 +262,7 @@ export const CharacterController = ({
           rb.current.setLinvel(curVel);
         }
       }}
-      gravityScale={stage === "game" ? 2.5 : 0}
+      gravityScale={stage === "game" ? 2.5 : stage === "lobby" ? 1 : 0}
       name={player ? "player" : "other"}
     >
       <group ref={cameraPosition} position={[0, 8, -16]}></group>

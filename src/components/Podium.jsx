@@ -23,6 +23,7 @@ export const Podium = () => {
   return (
     <group>
       <Character
+        animation = "victory"
         name={winnerProfile?.name}
         color={winnerProfile?.color}
         position-y={0.5}

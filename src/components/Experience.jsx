@@ -6,7 +6,7 @@ import { useGameState } from "../hooks/useGameState";
 import { CharacterController } from "./CharacterController";
 import { GameArena } from "./GameArena";
 import { Podium } from "./Podium";
-
+import { Lobby, LobbyFloor } from "./Lobby";
 export const Experience = () => {
   const { players, stage } = useGameState();
   const me = myPlayer();
@@ -14,6 +14,11 @@ export const Experience = () => {
   const firstNonDeadPlayer = players.find((p) => !p.state.getState("dead"));
 
   useEffect(() => {
+    if (stage === "lobby") {
+      camera.position.set(6.4, 2.4, -16);
+      console.log(camera.position);
+    }
+
     if (stage === "countdown") {
       camera.position.set(0, 50, -50);
     }
@@ -23,6 +28,12 @@ export const Experience = () => {
     <>
       <OrbitControls />
       <Environment files={"hdrs/medieval_cafe_1k.hdr"} />
+      {stage === "lobby" && (
+        <>
+          <Lobby scale = {0.4} position = {[0,0,0]}/>
+          <LobbyFloor scale = {0.6}/> 
+        </>
+      )}
       {stage === "winner" ? (
         <Podium />
       ) : (
@@ -35,7 +46,7 @@ export const Experience = () => {
               controls={controls}
               player={me.id === state.id}
               firstNonDeadPlayer={firstNonDeadPlayer?.state.id === state.id}
-              position-y={2}
+              position-y={10}
             />
           ))}
         </>
