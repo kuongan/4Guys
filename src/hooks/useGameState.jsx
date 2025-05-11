@@ -26,7 +26,7 @@ const TIMER_STAGE = {
   lobby: -1,
   countdown: 3,
   game: 0,
-  winner: 7,
+  winner: 10,
 };
 
 export const GameStateProvider = ({ children }) => {
@@ -34,6 +34,7 @@ export const GameStateProvider = ({ children }) => {
   const [stage, setStage] = useMultiplayerState("gameStage", "lobby");
   const [timer, setTimer] = useMultiplayerState("timer", TIMER_STAGE.lobby);
   const [players, setPlayers] = useState([]);
+  const [soloGame, setSoloGame] = useState(false);
 
   const host = isHost();
   const isInit = useRef(false);
@@ -111,24 +112,45 @@ export const GameStateProvider = ({ children }) => {
         if (stage === "game") {
           const playersAlive = players.filter((p) => !p.state.getState("dead"));
 
-          // Game ends when only 1 or 0 players alive
-          if (playersAlive.length <= 1) {
-            let winnerProfile = null;
+          console.log("=== GAME STATE CHECK ===");
+          console.log("Solo game:", soloGame);
+          console.log("Players alive:", playersAlive.length);
+          console.log("Total players:", players.length);
 
-            if (playersAlive.length === 1) {
-              // One player survived
-              winnerProfile = playersAlive[0].state.state.profile;
-        
-            } else {
-              // All players died - last one to die wins
-              // This shouldn't happen usually, but handle it
-              const lastPlayer = players[players.length - 1];
-              winnerProfile = lastPlayer.state.state.profile;
+          // Solo game logic
+          if (soloGame) {
+            // In solo game, end when player dies (0 alive)
+            if (playersAlive.length === 0) {
+              // The solo player is the winner even if dead
+              const soloPlayer = players[0];
+              console.log(
+                "Solo game ended, winner:",
+                soloPlayer.state.state.profile
+              );
+              setWinner(soloPlayer.state.state.profile, true);
+              setStage("winner", true);
+              newTime = TIMER_STAGE.winner;
             }
+          } else {
+            // Multiplayer logic - game ends when 1 or 0 players alive
+            if (playersAlive.length <= 1) {
+              let winnerProfile = null;
 
-            setWinner(winnerProfile, true);
-            setStage("winner", true);
-            newTime = TIMER_STAGE.winner;
+              if (playersAlive.length === 1) {
+                // One player survived
+                winnerProfile = playersAlive[0].state.state.profile;
+                console.log("Multiplayer winner:", winnerProfile);
+              } else {
+                // All players died - last one to die wins
+                const lastPlayer = players[players.length - 1];
+                winnerProfile = lastPlayer.state.state.profile;
+                console.log("All dead, last player wins:", winnerProfile);
+              }
+
+              setWinner(winnerProfile, true);
+              setStage("winner", true);
+              newTime = TIMER_STAGE.winner;
+            }
           }
         }
       }
@@ -136,12 +158,12 @@ export const GameStateProvider = ({ children }) => {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [host, timer, stage, players, setWinner, setStage, setTimer]);
+  }, [host, timer, stage, players, soloGame, setWinner, setStage, setTimer]);
 
   const startGame = () => {
     setStage("countdown");
     setTimer(TIMER_STAGE.countdown);
-    // Clear any previous winner
+    setSoloGame(players.length === 1);
     setWinner(null, true);
   };
 
@@ -154,6 +176,7 @@ export const GameStateProvider = ({ children }) => {
         host,
         startGame,
         winner,
+        soloGame, 
       }}
     >
       {children}
