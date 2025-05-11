@@ -26,7 +26,7 @@ const TIMER_STAGE = {
   lobby: -1,
   countdown: 3,
   game: 0,
-  winner: 5,
+  winner: 7,
 };
 
 export const GameStateProvider = ({ children }) => {
@@ -34,16 +34,16 @@ export const GameStateProvider = ({ children }) => {
   const [stage, setStage] = useMultiplayerState("gameStage", "lobby");
   const [timer, setTimer] = useMultiplayerState("timer", TIMER_STAGE.lobby);
   const [players, setPlayers] = useState([]);
-  const [soloGame, setSoloGame] = useState(false);
 
   const host = isHost();
   const isInit = useRef(false);
+
   useEffect(() => {
     if (isInit.current) {
       return;
     }
     isInit.current = true;
-    // Trong useGameState.jsx, cập nhật onPlayerJoin
+
     onPlayerJoin((state) => {
       const controls = new Joystick(state, {
         type: "angular",
@@ -56,7 +56,7 @@ export const GameStateProvider = ({ children }) => {
         state.setState("profile", {
           name: `Player ${players.length + 1}`,
           color: "#ffff00", // Default yellow
-          photo: "/api/placeholder/50/50", // Placeholder avatar
+          photo: "/api/placeholder/50/50",
         });
       }
 
@@ -88,8 +88,10 @@ export const GameStateProvider = ({ children }) => {
     if (stage === "lobby") {
       return;
     }
+
     const timeout = setTimeout(() => {
       let newTime = stage === "game" ? timer + 1 : timer - 1;
+
       if (newTime === 0) {
         const nextStage = NEXT_STAGE[stage];
         if (nextStage === "lobby" || nextStage === "countdown") {
@@ -99,6 +101,8 @@ export const GameStateProvider = ({ children }) => {
             p.state.setState("pos", null);
             p.state.setState("rot", null);
           });
+          // Clear winner when going back to lobby
+          setWinner(null, true);
         }
         setStage(nextStage, true);
         newTime = TIMER_STAGE[nextStage];
@@ -106,22 +110,39 @@ export const GameStateProvider = ({ children }) => {
         // CHECK GAME END
         if (stage === "game") {
           const playersAlive = players.filter((p) => !p.state.getState("dead"));
-          if (playersAlive.length < (soloGame ? 1 : 2)) {
+
+          // Game ends when only 1 or 0 players alive
+          if (playersAlive.length <= 1) {
+            let winnerProfile = null;
+
+            if (playersAlive.length === 1) {
+              // One player survived
+              winnerProfile = playersAlive[0].state.state.profile;
+        
+            } else {
+              // All players died - last one to die wins
+              // This shouldn't happen usually, but handle it
+              const lastPlayer = players[players.length - 1];
+              winnerProfile = lastPlayer.state.state.profile;
+            }
+
+            setWinner(winnerProfile, true);
             setStage("winner", true);
-            setWinner(playersAlive[0]?.state.state.profile, true);
             newTime = TIMER_STAGE.winner;
           }
         }
       }
       setTimer(newTime, true);
     }, 1000);
+
     return () => clearTimeout(timeout);
-  }, [host, timer, stage, soloGame]);
+  }, [host, timer, stage, players, setWinner, setStage, setTimer]);
 
   const startGame = () => {
     setStage("countdown");
     setTimer(TIMER_STAGE.countdown);
-    setSoloGame(players.length === 1);
+    // Clear any previous winner
+    setWinner(null, true);
   };
 
   return (
@@ -132,6 +153,7 @@ export const GameStateProvider = ({ children }) => {
         players,
         host,
         startGame,
+        winner,
       }}
     >
       {children}

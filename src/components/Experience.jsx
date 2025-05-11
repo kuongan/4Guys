@@ -30,12 +30,12 @@ export const Experience = () => {
       <Environment files={"hdrs/medieval_cafe_1k.hdr"} />
       {stage === "lobby" && (
         <>
-          <Lobby scale = {0.5} position = {[0,0,0]}/>
-          <LobbyFloor scale = {0.7}/> 
+          <Lobby scale={0.5} position={[0, 0, 0]} />
+          <LobbyFloor scale={0.7} />
         </>
       )}
       {stage === "winner" ? (
-        <Podium />
+        <Podium currentPlayer={me} />
       ) : (
         <>
           {stage !== "lobby" && <GameArena />}

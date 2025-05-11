@@ -18,8 +18,19 @@ export function Character({
   const group = useRef();
   const { scene, animations } = useGLTF("/models/character.glb", "draco/gltf/");
 
+  // Create unique material instance for this character
+  const bodyMaterialRef = useRef(null);
+
   const clone = useMemo(() => {
     const clonedScene = SkeletonUtils.clone(scene);
+
+    // Clone materials to avoid sharing
+    clonedScene.traverse((child) => {
+      if (child.isMesh) {
+        child.material = child.material.clone();
+      }
+    });
+
     return clonedScene;
   }, [scene]);
 
@@ -33,15 +44,24 @@ export function Character({
     if (group.current) {
       group.current.traverse((child) => {
         if (child.isMesh && child.name === "Body") {
-          // Method 3: Modify existing material
-          child.material.color.set(color);
-          child.material.map = null; 
-          child.material.vertexColors = false; // Disable vertex colors
-          child.material.emissive.setHex(0x000000);
-          child.material.needsUpdate = true;
+          // Create or get the unique material for this character
+          if (!bodyMaterialRef.current) {
+            bodyMaterialRef.current = child.material.clone();
+            child.material = bodyMaterialRef.current;
+          }
+
+          // Update the unique material's color
+          bodyMaterialRef.current.color.set(color);
+          bodyMaterialRef.current.map = null;
+          bodyMaterialRef.current.vertexColors = false;
+          bodyMaterialRef.current.emissive.setHex(0x000000);
+          bodyMaterialRef.current.needsUpdate = true;
 
           console.log("After color change:");
-          console.log("- new color:", child.material.color.getHexString());
+          console.log(
+            "- new color:",
+            bodyMaterialRef.current.color.getHexString()
+          );
           console.log("- material updated");
         }
       });
