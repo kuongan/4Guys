@@ -18,7 +18,7 @@ import { FLOORS, FLOOR_HEIGHT } from "./GameArena";
 
 const MOVEMENT_SPEED = 4.2;
 const JUMP_FORCE = 8;
-const ROTATION_SPEED = 2.7;
+const ROTATION_SPEED = 3;
 const vel = new Vector3();
 
 export const CharacterController = ({
@@ -59,11 +59,10 @@ export const CharacterController = ({
     checkProfileChanges();
 
     // Set up interval to check for changes
-    const interval = setInterval(checkProfileChanges, 100); // Check every 100ms
+    const interval = setInterval(checkProfileChanges, 500); 
 
     return () => clearInterval(interval);
   }, [state, playerProfile]);
-  // Reset position when stage changes
   useEffect(() => {
     if (rb.current && stage !== prevStage.current) {
       const startingPos = state.getState("startingPos");
@@ -91,18 +90,24 @@ export const CharacterController = ({
 
   useFrame(({ camera }) => {
     if (stage === "lobby") {
+      setAnimation("wave");
+      state.setState("animation", "wave");
       return;
+    }
+    if (stage === "countdown") {
+      setAnimation("idle");
+      state.setState("animation", "idle");
     }
     if ((player && !isDead) || firstNonDeadPlayer) {
       const rbPosition = vec3(rb.current.translation());
       if (!cameraLookAt.current) {
         cameraLookAt.current = rbPosition;
       }
-      cameraLookAt.current.lerp(rbPosition, 0.05);
+      cameraLookAt.current.lerp(rbPosition, 0.07);
       camera.lookAt(cameraLookAt.current);
       const worldPos = rbPosition;
       cameraPosition.current.getWorldPosition(worldPos);
-      camera.position.lerp(worldPos, 0.05);
+      camera.position.lerp(worldPos, 0.07);
     }
 
     // Movement logic for lobby and game
@@ -228,10 +233,7 @@ export const CharacterController = ({
           const anim = isRunning ? "run" : "walk";
           setAnimation(anim);
           state.setState("animation", anim);
-        } else if (stage === "lobby") {
-          setAnimation("wave");
-          state.setState("animation", "wave");
-        }
+        } 
         else {
           setAnimation("idle");
           state.setState("animation", "idle");
@@ -248,6 +250,7 @@ export const CharacterController = ({
         setState("lastDead", state.state.profile, true);
         playAudio("Dead", true);
       }
+
     }
   });
 

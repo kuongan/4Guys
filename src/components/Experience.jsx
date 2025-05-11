@@ -15,7 +15,7 @@ export const Experience = () => {
 
   useEffect(() => {
     if (stage === "lobby") {
-      camera.position.set(6.4, 2.4, -16);
+      camera.position.set(10, 4, -24);
       console.log(camera.position);
     }
 
@@ -30,8 +30,8 @@ export const Experience = () => {
       <Environment files={"hdrs/medieval_cafe_1k.hdr"} />
       {stage === "lobby" && (
         <>
-          <Lobby scale = {0.4} position = {[0,0,0]}/>
-          <LobbyFloor scale = {0.6}/> 
+          <Lobby scale = {0.5} position = {[0,0,0]}/>
+          <LobbyFloor scale = {0.7}/> 
         </>
       )}
       {stage === "winner" ? (

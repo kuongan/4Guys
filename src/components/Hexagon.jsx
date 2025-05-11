@@ -11,7 +11,7 @@ import { Color } from "three";
 import { MathUtils, randFloat, randInt } from "three/src/math/MathUtils.js";
 import { useAudioManager } from "../hooks/useAudioManager";
 
-const TIME_AFTER_HIT = 600;
+const TIME_AFTER_HIT = 800;
 
 export function Hexagon({ color, onHit, hit, ...props }) {
   const { playAudio } = useAudioManager();
