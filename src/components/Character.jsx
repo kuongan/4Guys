@@ -62,15 +62,15 @@ export function Character({
 
     const newAction = actions[animation];
     if (newAction) {
-      newAction.reset().fadeIn(0.1).play();
+      newAction.reset().fadeIn(0.05).play();
     }
 
     if (prevAction && prevAction !== newAction) {
-      prevAction.fadeOut(0.1);
+      prevAction.fadeOut(0.05);
     }
 
     return () => {
-      newAction?.fadeOut(0.1);
+      newAction?.fadeOut(0.05);
     };
   }, [animation, actions]);
 
