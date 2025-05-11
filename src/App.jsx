@@ -34,7 +34,7 @@ function App() {
       <AudioManagerProvider>
         <GameStateProvider>
           <Canvas shadows camera={{ position: [0, 16, 10], fov: 42 }}>
-            <color attach="background" args={["#041c0b"]} />
+            <color attach="background" args={["#DEEBF7"]} />
             <Physics>
               <Experience />
             </Physics>
