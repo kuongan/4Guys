@@ -47,6 +47,7 @@ export const CharacterController = ({
   const landingTimer = useRef(null);
   const previousYVelocity = useRef(0);
   const prevStage = useRef(stage);
+  const countdownAudioPlayed = useRef(false);
   useEffect(() => {
     const checkProfileChanges = () => {
       const currentProfile = state.getState("profile");
@@ -87,13 +88,24 @@ export const CharacterController = ({
       prevStage.current = stage;
     }
   }, [stage, state]);
+  useEffect(() => {
+    if (stage === "countdown" && !countdownAudioPlayed.current) {
+      playAudio("ready", true);
+      countdownAudioPlayed.current = true;
+    }
 
+    // Reset the flag when leaving countdown stage
+    if (stage !== "countdown") {
+      countdownAudioPlayed.current = false;
+    }
+  }, [stage, playAudio]);
   useFrame(({ camera }) => {
     if (stage === "lobby") {
       setAnimation("wave");
       state.setState("animation", "wave");
       return;
     }
+    
     if (stage === "countdown") {
       setAnimation("idle");
       state.setState("animation", "idle");

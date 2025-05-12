@@ -6,7 +6,7 @@ import "./index.css";
 
 insertCoin({
   skipLobby: true,
-  gameId: "Nrkxf84kYcXG6I3RY6sJ",
+  gameId: "MAtluLNIlEWCcgDs1Plq",
   discord: true,
 }).then(() =>
   ReactDOM.createRoot(document.getElementById("root")).render(

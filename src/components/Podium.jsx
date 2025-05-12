@@ -21,6 +21,7 @@ export const Podium = () => {
   const { playAudio } = useAudioManager();
   const me = myPlayer();
   const myProfile = me.state.profile;
+  const audioPlayed = useRef(false);
 
   // Check if current player is the winner
   const isWinner = !!(
@@ -32,16 +33,26 @@ export const Podium = () => {
 
   const animation = isWinner ? "victory" : "lose";
 
+  // Separate effect for audio - only run once
+  useEffect(() => {
+    if (!audioPlayed.current) {
+      const audioName = isWinner ? "Victory" : "Lose";
+      console.log("Playing audio:", audioName);
+      playAudio(audioName, true);
+      audioPlayed.current = true;
+    }
+  }, []); // Empty dependency array - only run once on mount
+
+  // Separate effect for camera
   useEffect(() => {
     camera.position.set(4, 3, 15);
     camera.lookAt(0, 2, 0);
-    playAudio(isWinner ? "Victory" : "Defeat", true);
 
     return () => {
       camera.position.set(0, 16, 10);
       camera.lookAt(0, 0, 0);
     };
-  }, [isWinner, camera, playAudio]);
+  }, [camera]);
 
   if (!myProfile) {
     console.warn("No player profile found");
