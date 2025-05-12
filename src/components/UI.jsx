@@ -34,7 +34,7 @@ export const UI = () => {
             {timer}
           </h2>
         )}
-        <img src="images/logo.png" className="absolute top-4 left-4 w-28" />
+        <img src="images/logo.png" className="absolute top-4 left-4 w-16" />
         {stage === "lobby" && (
           <>
             <button
