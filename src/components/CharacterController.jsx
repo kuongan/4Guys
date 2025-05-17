@@ -38,7 +38,9 @@ export const CharacterController = ({
   const landed = useRef(false);
   const cameraPosition = useRef();
   const cameraLookAt = useRef();
-  const isRunning = get()[Controls.run];
+
+  // Get running state from keyboard or joystick
+  const isRunning = get()[Controls.run] || controls.isPressed("Run");
   const movementSpeed = isRunning ? MOVEMENT_SPEED * 1.4 : MOVEMENT_SPEED;
   const [playerProfile, setPlayerProfile] = useState(state.state.profile);
 
@@ -48,6 +50,8 @@ export const CharacterController = ({
   const previousYVelocity = useRef(0);
   const prevStage = useRef(stage);
   const countdownAudioPlayed = useRef(false);
+
+  // Handle profile changes
   useEffect(() => {
     const checkProfileChanges = () => {
       const currentProfile = state.getState("profile");
@@ -60,10 +64,12 @@ export const CharacterController = ({
     checkProfileChanges();
 
     // Set up interval to check for changes
-    const interval = setInterval(checkProfileChanges, 500); 
+    const interval = setInterval(checkProfileChanges, 500);
 
     return () => clearInterval(interval);
   }, [state, playerProfile]);
+
+  // Handle stage changes
   useEffect(() => {
     if (rb.current && stage !== prevStage.current) {
       const startingPos = state.getState("startingPos");
@@ -88,6 +94,8 @@ export const CharacterController = ({
       prevStage.current = stage;
     }
   }, [stage, state]);
+
+  // Play countdown audio
   useEffect(() => {
     if (stage === "countdown" && !countdownAudioPlayed.current) {
       playAudio("ready", true);
@@ -99,18 +107,31 @@ export const CharacterController = ({
       countdownAudioPlayed.current = false;
     }
   }, [stage, playAudio]);
+
+  // Main game loop
   useFrame(({ camera }) => {
+    // Skip if home stage
+    if (stage === "home") return;
+
+    // In lobby, only update animation
     if (stage === "lobby") {
       setAnimation("wave");
       state.setState("animation", "wave");
       return;
     }
-    
+
+    // In countdown, set idle animation
     if (stage === "countdown") {
       setAnimation("idle");
       state.setState("animation", "idle");
     }
-    if ((player && !isDead) || firstNonDeadPlayer) {
+
+    // Camera control - only in game and countdown stages
+    // Only control camera if player is active or this is the first non-dead player
+    if (
+      (stage === "game" || stage === "countdown") &&
+      ((player && !isDead) || firstNonDeadPlayer)
+    ) {
       const rbPosition = vec3(rb.current.translation());
       if (!cameraLookAt.current) {
         cameraLookAt.current = rbPosition;
@@ -122,9 +143,10 @@ export const CharacterController = ({
       camera.position.lerp(worldPos, 0.07);
     }
 
-    // Movement logic for lobby and game
-    if ( stage === "game") {
+    // Movement logic for game stage
+    if (stage === "game") {
       if (!player) {
+        // Handle non-player characters (other players)
         const pos = state.getState("pos");
         if (pos) {
           rb.current.setTranslation(pos);
@@ -139,6 +161,7 @@ export const CharacterController = ({
         return;
       }
 
+      // Handle player character movement
       const rotVel = {
         x: 0,
         y: 0,
@@ -154,24 +177,31 @@ export const CharacterController = ({
       const joystickX = Math.sin(angle);
       const joystickY = Math.cos(angle);
 
+      // Forward movement
       if (
         get()[Controls.forward] ||
         (controls.isJoystickPressed() && joystickY < -0.1)
       ) {
         vel.z += movementSpeed;
       }
+
+      // Backward movement
       if (
         get()[Controls.back] ||
         (controls.isJoystickPressed() && joystickY > 0.1)
       ) {
         vel.z -= movementSpeed;
       }
+
+      // Left rotation
       if (
         get()[Controls.left] ||
         (controls.isJoystickPressed() && joystickX < -0.1)
       ) {
         rotVel.y += ROTATION_SPEED;
       }
+
+      // Right rotation
       if (
         get()[Controls.right] ||
         (controls.isJoystickPressed() && joystickX > 0.1)
@@ -183,6 +213,7 @@ export const CharacterController = ({
       const eulerRot = euler().setFromQuaternion(quat(rb.current.rotation()));
       vel.applyEuler(eulerRot);
 
+      // Jump logic
       if (
         (get()[Controls.jump] || controls.isPressed("Jump")) &&
         !inTheAir.current &&
@@ -195,6 +226,7 @@ export const CharacterController = ({
         vel.y = curVel.y;
       }
 
+      // Update air state
       if (Math.abs(vel.y) > 1) {
         inTheAir.current = true;
         landed.current = false;
@@ -206,7 +238,7 @@ export const CharacterController = ({
       state.setState("pos", rb.current.translation());
       state.setState("rot", rb.current.rotation());
 
-      // ANIMATION
+      // ANIMATION LOGIC
       const movement = Math.abs(vel.x) + Math.abs(vel.z);
 
       // Check for landing condition
@@ -229,7 +261,6 @@ export const CharacterController = ({
           landingTimer.current = null;
         }, 300);
       }
-      
 
       previousYVelocity.current = vel.y;
 
@@ -245,8 +276,7 @@ export const CharacterController = ({
           const anim = isRunning ? "run" : "walk";
           setAnimation(anim);
           state.setState("animation", anim);
-        } 
-        else {
+        } else {
           setAnimation("idle");
           state.setState("animation", "idle");
         }
@@ -262,7 +292,6 @@ export const CharacterController = ({
         setState("lastDead", state.state.profile, true);
         playAudio("Dead", true);
       }
-
     }
   });
 
@@ -299,7 +328,7 @@ export const CharacterController = ({
       <group ref={cameraPosition} position={[0, 8, -16]}></group>
       <Character
         scale={0.42}
-        color={playerProfile.color} 
+        color={playerProfile.color}
         name={playerProfile.name}
         position-y={0.2}
         animation={animation}
