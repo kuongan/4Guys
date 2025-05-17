@@ -1,7 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Experience } from "./components/Experience";
-
+import { Toaster } from "react-hot-toast";
 import { KeyboardControls } from "@react-three/drei";
 import { useMemo } from "react";
 import { UI } from "./components/UI";
@@ -30,19 +30,24 @@ function App() {
     []
   );
   return (
-    <KeyboardControls map={map}>
-      <AudioManagerProvider>
-        <GameStateProvider>
-          <Canvas shadows camera={{ position: [0, 16, 10], fov: 42 }}>
-            <color attach="background" args={["#DEEBF7"]} />
-            <Physics>
-              <Experience />
-            </Physics>
-          </Canvas>
-          <UI />
-        </GameStateProvider>
-      </AudioManagerProvider>
-    </KeyboardControls>
+    <>
+      <Toaster position="top-center" />
+      <KeyboardControls map={map}>
+        <AudioManagerProvider>
+          <GameStateProvider>
+            <div className="fixed inset-0 w-full h-full pointer-events-auto">
+              <Canvas shadows camera={{ position: [0, 16, 10], fov: 42 }}>
+                <color attach="background" args={["#DEEBF7"]} />
+                <Physics>
+                  <Experience />
+                </Physics>
+              </Canvas>
+            </div>
+            <UI />
+          </GameStateProvider>
+        </AudioManagerProvider>
+      </KeyboardControls>
+    </>
   );
 }
 
